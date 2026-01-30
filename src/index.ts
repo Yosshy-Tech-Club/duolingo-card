@@ -33,7 +33,7 @@ type Theme = 'light' | 'dark' | 'duolingo' | 'super'
 
 const app = new Hono()
 
-app.get('/:username{[^/]+}/*?', async (c) => {
+app.get('/:username/*', async (c) => {
   const username = c.req.param('username')
   if (!username) return c.body(null, 204)
 
