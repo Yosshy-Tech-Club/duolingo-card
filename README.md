@@ -6,6 +6,6 @@
 ## demo
 - Default
 ```
-[![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName}?theme=super)](https://www.duolingo.com/profile/{YourName})
+[![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName})](https://www.duolingo.com/profile/{YourName})
 ```
 [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/Wojicle?a=14)](https://www.duolingo.com/profile/Wojicle)
