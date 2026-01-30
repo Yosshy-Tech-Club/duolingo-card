@@ -18,7 +18,13 @@
   [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle?theme=dark)](https://www.duolingo.com/profile/wojicle)
 ---
 - Duolingo
-```markdown
-[![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName}?theme=duolingo)](https://www.duolingo.com/profile/{YourName})
-```
+  ```markdown
+  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName}?theme=duolingo)](https://www.duolingo.com/profile/{YourName})
+  ```
   [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle?theme=duolingo)](https://www.duolingo.com/profile/wojicle)
+---
+- Super
+  ```markdown
+  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName}?theme=super)](https://www.duolingo.com/profile/{YourName})
+  ```
+  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle?theme=super)](https://www.duolingo.com/profile/wojicle)
