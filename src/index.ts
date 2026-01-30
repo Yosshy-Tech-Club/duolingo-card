@@ -59,10 +59,10 @@ const app = new Hono();
  */
 app.get("/:username", async (c) => {
   const url = new URL(c.req.url);
-  const pathParts = url.pathname.split("/").filter(Boolean);
+  const parts = url.pathname.split("/").filter(Boolean);
 
-  const username = pathParts[0];
-  const showSpecial = pathParts[1] === "s";
+  const username = parts[0];
+  const showSpecial = parts[1] === "s";
 
   if (!username || username === "favicon.ico") {
     return c.body(null, 204);
@@ -75,9 +75,7 @@ app.get("/:username", async (c) => {
   const isDuolingo = theme === "duolingo";
   const isSuper = theme === "super";
 
-  /* ---------- cache key ---------- */
-
-  const cache = typeof caches !== "undefined" ? caches : undefined;
+  const cache = caches.default;
 
   const cacheKeyUrl = new URL(c.req.url);
   cacheKeyUrl.search = "";
@@ -86,12 +84,10 @@ app.get("/:username", async (c) => {
   const cacheKey = new Request(cacheKeyUrl.toString(), { method: "GET" });
 
   try {
-    if (cache) {
-      const cached = await cache.match(cacheKey);
-      if (cached) return cached;
-    }
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
 
-    const rawUser = await fetchUserData(username, cacheKeyUrl.origin);
+    const rawUser = await fetchUserData(username);
     const user = normalizeUser(rawUser, username);
 
     const avatar = await fetchAvatarDataUri(user.picture);
@@ -121,14 +117,7 @@ app.get("/:username", async (c) => {
       },
     });
 
-    if (cache) {
-      try {
-        await cache.put(cacheKey, response.clone());
-      } catch {
-        /* non-fatal */
-      }
-    }
-
+    await cache.put(cacheKey, response.clone());
     return response;
   } catch (err: unknown) {
     const message =
@@ -167,68 +156,29 @@ const FLAG_BASE =
 
 function fetchWithTimeout(
   input: RequestInfo,
-  init: RequestInit = {},
   timeoutMs = 5000
 ): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
 
-  return fetch(input, { ...init, signal: controller.signal }).finally(
-    () => clearTimeout(id)
+  return fetch(input, { signal: controller.signal }).finally(() =>
+    clearTimeout(id)
   ) as Promise<Response>;
 }
 
-async function fetchUserData(
-  username: string,
-  origin: string
-): Promise<DuomeUserRaw> {
+async function fetchUserData(username: string): Promise<DuomeUserRaw> {
   const url = DUOME_BASE + encodeURIComponent(username);
-  const cacheKey = new Request(`${origin}/.cache/user/${username}`);
-
-  try {
-    if (typeof caches !== "undefined") {
-      const cached = await caches.match(cacheKey);
-      if (cached) return (await cached.json()) as DuomeUserRaw;
-    }
-  } catch {
-    /* ignore */
-  }
-
-  const res = await fetchWithTimeout(url, {}, 6000);
+  const res = await fetchWithTimeout(url, 6000);
 
   if (!res.ok) {
     const err = new Error(
       `Duome API error (${res.status})`
     ) as FetchError;
     err.status = res.status;
-
-    try {
-      const json = (await res.json()) as { message?: string };
-      if (json.message) err.message = json.message;
-    } catch {
-      /* ignore */
-    }
-
     throw err;
   }
 
-  const json = (await res.json()) as DuomeUserRaw;
-
-  try {
-    if (typeof caches !== "undefined") {
-      const resp = new Response(JSON.stringify(json), {
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=300",
-        },
-      });
-      await caches.put(cacheKey, resp.clone());
-    }
-  } catch {
-    /* ignore */
-  }
-
-  return json;
+  return (await res.json()) as DuomeUserRaw;
 }
 
 /* =========================================================
@@ -293,7 +243,7 @@ async function fetchAvatarDataUri(
 
   for (const suffix of ["/xlarge", "/large", ""]) {
     try {
-      const res = await fetchWithTimeout(src + suffix, {}, 5000);
+      const res = await fetchWithTimeout(src + suffix, 5000);
       if (!res.ok) continue;
 
       const type = res.headers.get("Content-Type") ?? "image/jpeg";
@@ -403,7 +353,6 @@ async function fetchFlags(codes: string[]): Promise<string[]> {
     try {
       const res = await fetchWithTimeout(
         `${FLAG_BASE}${code}.svg`,
-        {},
         4000
       );
       if (!res.ok) continue;
@@ -470,7 +419,6 @@ function generateSvg(opts: {
   const height = 130 + rows * 30 + 10;
 
   const isRight = iconPos === "right";
-
   const ax = isRight ? 275 : 25;
   const tx = isRight ? 25 : 90;
   const sx = isRight ? 25 : 90;
@@ -563,11 +511,7 @@ function escapeXml(s: string): string {
   );
 }
 
-function errorSvg(
-  c: Context,
-  message: string,
-  status = 500
-) {
+function errorSvg(c: Context, message: string, status = 500) {
   return c.body(
     `<svg xmlns="http://www.w3.org/2000/svg" width="350" height="120">
        <rect width="100%" height="100%" fill="#fff" rx="12"/>
