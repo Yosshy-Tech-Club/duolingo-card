@@ -16,3 +16,9 @@
   [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName}?theme=dark)](https://www.duolingo.com/profile/{YourName})
   ```
   [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle?theme=dark)](https://www.duolingo.com/profile/wojicle)
+---
+- Duolingo
+```markdown
+[![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName}?theme=duolingo)](https://www.duolingo.com/profile/{YourName})
+```
+  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle?theme=duolingo)](https://www.duolingo.com/profile/wojicle)
