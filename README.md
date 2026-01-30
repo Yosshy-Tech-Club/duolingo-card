@@ -5,10 +5,10 @@
 
 ## demo
 - Default
-```markdown
-[![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName})](https://www.duolingo.com/profile/{YourName})
-```
-[![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle)](https://www.duolingo.com/profile/Wojicle)
+  ```markdown
+  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName})](https://www.duolingo.com/profile/{YourName})
+  ```
+  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle)](https://www.duolingo.com/profile/Wojicle)
 
 ---
 - Dark
