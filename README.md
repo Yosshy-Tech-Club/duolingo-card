@@ -1,33 +1,84 @@
 <div align="center">
   <h1>Duolingo Card</h1>
-  <h4>Duolingo Card is a display of your Duolingo activities as an svg.</h4>
+  <h3>Visualize your Duolingo activity as a single SVG</h3>
 </div>
 
-## demo
-- Default
-  ```markdown
-  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName})](https://www.duolingo.com/profile/{YourName})
-  ```
-  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle)](https://www.duolingo.com/profile/Wojicle)
+---
+
+## Overview
+
+**Duolingo Card** allows you to visualize your Duolingo activity as a **single SVG image**.  
+You can embed it in your blog or README to showcase your activity at a glance.
 
 ---
-- Dark
-  ```markdown
-  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName}?theme=dark)](https://www.duolingo.com/profile/{YourName})
-  ```
-  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle?theme=dark)](https://www.duolingo.com/profile/wojicle)
+
+## Usage
+
+You can get the SVG using the following URL format:
+
+```
+https://duolingo-card.yosshy-123.workers.dev/[user_id]
+```
+
+* Replace `[user_id]` with your Duolingo user ID.
+* The default theme is light.
+
+### Dark Theme
+
+Add `?theme=dark` to the URL to get a dark-themed SVG:
+
+```
+https://duolingo-card.yosshy-123.workers.dev/[user_id]?theme=dark
+```
+
+### Duolingo Theme
+
+Add `?theme=duolingo` to the URL to get a dark-themed SVG:
+
+```
+https://duolingo-card.yosshy-123.workers.dev/[user_id]?theme=duolingo
+```
+
+### Super Theme
+
+Add `?theme=super` to the URL to get a dark-themed SVG:
+
+```
+https://duolingo-card.yosshy-123.workers.dev/[user_id]?theme=super
+```
+
 ---
-- Duolingo
-  ```markdown
-  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName}?theme=duolingo)](https://www.duolingo.com/profile/{YourName})
-  ```
-  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle?theme=duolingo)](https://www.duolingo.com/profile/wojicle)
----
-- Super
-  ```markdown
-  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/{YourName}?theme=super)](https://www.duolingo.com/profile/{YourName})
-  ```
-  [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/wojicle?theme=super)](https://www.duolingo.com/profile/wojicle)
-  ## Super user
-    [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/duolingo?)](https://www.duolingo.com/profile/duolingo)
-(https://www.duolingo.com/profile/Duolingo)
+
+## Example
+
+Light theme:
+
+[![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle)](https://www.duolingo.com/profile/Wojicle)
+
+```markdown
+[![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle)](https://www.duolingo.com/profile/Wojicle)
+```
+
+Dark theme:
+
+[![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle?theme=dark)](https://www.duolingo.com/profile/Wojicle)
+
+```markdown
+[![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle?theme=dark)](https://www.duolingo.com/profile/Wojicle)
+```
+
+Duolingo theme:
+
+[![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle?theme=duolingo)](https://www.duolingo.com/profile/Wojicle)
+
+```markdown
+[![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle?theme=duolingo)](https://www.duolingo.com/profile/Wojicle)
+```
+
+Super theme:
+
+[![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle?theme=super)](https://www.duolingo.com/profile/Wojicle)
+
+```markdown
+[![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle?theme=super)](https://www.duolingo.com/profile/Wojicle)
+```
