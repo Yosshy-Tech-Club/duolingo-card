@@ -5,28 +5,22 @@ import type { Context } from "hono";
  * Types
  * ======================================================= */
 
-type DuomeLang = {
-  language?: string;
-  code?: string;
-  xp?: number;
-  points?: number;
-  from?: string;
-  fromLanguage?: string;
+type DuolingoApiResponse = {
+  users: DuolingoUser[];
 };
 
-type DuomeUserRaw = {
-  username?: string;
-  name?: string;
+type DuolingoUser = {
+  username: string;
+  name: string;
   streak?: number;
-  site?: { streak?: number };
-  has_plus?: boolean;
   hasPlus?: boolean;
-  total_xp?: number;
   totalXp?: number;
-  languages?: DuomeLang[];
   picture?: string;
-  profile_picture?: string;
-  avatar?: string;
+  courses?: {
+    learningLanguage: string;
+    fromLanguage: string;
+    xp: number;
+  }[];
 };
 
 type Language = {
@@ -53,10 +47,6 @@ type FetchError = Error & { status?: number };
 
 const app = new Hono();
 
-/**
- * GET /:username
- * Optional second path segment `s` enables special courses display.
- */
 app.get("/:username", async (c) => {
   const url = new URL(c.req.url);
   const parts = url.pathname.split("/").filter(Boolean);
@@ -79,7 +69,7 @@ app.get("/:username", async (c) => {
 
   const cacheKeyUrl = new URL(c.req.url);
   cacheKeyUrl.search = "";
-  cacheKeyUrl.searchParams.set("theme", isDark ? "dark" : "light");
+  cacheKeyUrl.searchParams.set("theme", theme);
 
   const cacheKey = new Request(cacheKeyUrl.toString(), { method: "GET" });
 
@@ -87,8 +77,8 @@ app.get("/:username", async (c) => {
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
 
-    const rawUser = await fetchUserData(username);
-    const user = normalizeUser(rawUser, username);
+    const raw = await fetchUserData(username);
+    const user = normalizeUser(raw);
 
     const avatar = await fetchAvatarDataUri(user.picture);
     const { detectedCodes, calculatedTotalXp } = detectCourses(
@@ -121,34 +111,18 @@ app.get("/:username", async (c) => {
     return response;
   } catch (err: unknown) {
     const message =
-      err instanceof Error ? err.message : "Duome API error";
+      err instanceof Error ? err.message : "Duolingo API error";
 
     const status =
       err instanceof Error && typeof (err as FetchError).status === "number"
         ? (err as FetchError).status
         : 500;
 
-    if (status === 404) {
-      return errorSvg(c, `User "${username}" not found`, 404);
-    }
-
-    if (status === 429) {
-      return errorSvg(c, "Rate limit exceeded", 429);
-    }
-
     return errorSvg(c, message, status);
   }
 });
 
 export default { fetch: app.fetch };
-
-/* =========================================================
- * Configuration
- * ======================================================= */
-
-const DUOME_BASE = "https://www.duolingo.com/2017-06-30/users?username=";
-const FLAG_BASE =
-  "https://cdn.jsdelivr.net/gh/Wojix/duolingo-card@main/flag/";
 
 /* =========================================================
  * Fetch helpers
@@ -166,57 +140,47 @@ function fetchWithTimeout(
   ) as Promise<Response>;
 }
 
-async function fetchUserData(username: string): Promise<DuomeUserRaw> {
-  const url = DUOME_BASE + encodeURIComponent(username);
+async function fetchUserData(username: string): Promise<DuolingoUser> {
+  const url =
+    "https://www.duolingo.com/2017-06-30/users?username=" +
+    encodeURIComponent(username);
+
   const res = await fetchWithTimeout(url, 6000);
 
   if (!res.ok) {
-    const err = new Error(
-      `Duome API error (${res.status})`
-    ) as FetchError;
+    const err = new Error(`Duolingo API error (${res.status})`) as FetchError;
     err.status = res.status;
     throw err;
   }
 
-  return (await res.json()) as DuomeUserRaw;
+  const data = (await res.json()) as DuolingoApiResponse;
+
+  if (!data.users || data.users.length === 0) {
+    const err = new Error("User not found") as FetchError;
+    err.status = 404;
+    throw err;
+  }
+
+  return data.users[0];
 }
 
 /* =========================================================
  * Normalization
  * ======================================================= */
 
-function normalizeUser(
-  raw: DuomeUserRaw,
-  fallbackUsername: string
-): User {
-  if (raw?.username && Array.isArray(raw.languages)) {
-    return {
-      name: raw.name || raw.username,
-      username: raw.username,
-      streak: raw.streak ?? raw.site?.streak ?? 0,
-      hasPlus: raw.has_plus ?? raw.hasPlus ?? false,
-      total_xp: raw.total_xp ?? raw.totalXp ?? 0,
-      languages: raw.languages.map((l) => ({
-        learningLanguage: l.language || l.code || "",
-        points: l.xp ?? l.points ?? 0,
-        from: l.from || l.fromLanguage,
-      })),
-      picture:
-        raw.picture ||
-        raw.profile_picture ||
-        raw.avatar ||
-        null,
-    };
-  }
-
+function normalizeUser(raw: DuolingoUser): User {
   return {
-    name: fallbackUsername,
-    username: fallbackUsername,
-    streak: 0,
-    hasPlus: false,
-    total_xp: 0,
-    languages: [],
-    picture: null,
+    name: raw.name,
+    username: raw.username,
+    streak: raw.streak ?? 0,
+    hasPlus: raw.hasPlus ?? false,
+    total_xp: raw.totalXp ?? 0,
+    languages: (raw.courses ?? []).map((c) => ({
+      learningLanguage: c.learningLanguage,
+      points: c.xp,
+      from: c.fromLanguage,
+    })),
+    picture: raw.picture ?? null,
   };
 }
 
@@ -241,22 +205,18 @@ async function fetchAvatarDataUri(
       ? `https:${picture}`
       : `https:${picture}`;
 
-  for (const suffix of ["/xlarge", "/large", ""]) {
-    try {
-      const res = await fetchWithTimeout(src + suffix, 5000);
-      if (!res.ok) continue;
+  try {
+    const res = await fetchWithTimeout(src, 5000);
+    if (!res.ok) return fallback;
 
-      const type = res.headers.get("Content-Type") ?? "image/jpeg";
-      const ext = type.split("/").pop() ?? "jpeg";
-      const b64 = await responseToBase64(res);
+    const type = res.headers.get("Content-Type") ?? "image/jpeg";
+    const ext = type.split("/").pop() ?? "jpeg";
+    const b64 = await responseToBase64(res);
 
-      return `data:image/${ext};base64,${b64}`;
-    } catch {
-      /* try next */
-    }
+    return `data:image/${ext};base64,${b64}`;
+  } catch {
+    return fallback;
   }
-
-  return fallback;
 }
 
 async function responseToBase64(res: Response): Promise<string> {
@@ -264,15 +224,7 @@ async function responseToBase64(res: Response): Promise<string> {
   const bytes = new Uint8Array(buffer);
 
   let binary = "";
-  const chunkSize = 0x8000;
-
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const sub = bytes.subarray(i, i + chunkSize);
-    for (let j = 0; j < sub.length; j++) {
-      binary += String.fromCharCode(sub[j]);
-    }
-  }
-
+  for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary);
 }
 
@@ -280,33 +232,24 @@ async function responseToBase64(res: Response): Promise<string> {
  * Courses / Flags
  * ======================================================= */
 
+const FLAG_BASE =
+  "https://cdn.jsdelivr.net/gh/Wojix/duolingo-card@main/flag/";
+
 function detectCourses(langs: Language[], showSpecial: boolean) {
   const xpMap = new Map<string, number>();
   const seen = new Set<string>();
-
-  const detected: {
-    code: string;
-    points: number;
-    isSpecial: boolean;
-  }[] = [];
+  const detected: { code: string; points: number; isSpecial: boolean }[] = [];
 
   for (const l of langs) {
-    const points = l.points ?? 0;
     const from = l.from ?? "unknown";
     const key = `${l.learningLanguage}_from_${from}`;
+    xpMap.set(key, Math.max(l.points, xpMap.get(key) ?? 0));
 
-    xpMap.set(key, Math.max(points, xpMap.get(key) ?? 0));
-
-    if (
-      l.learningLanguage &&
-      !seen.has(l.learningLanguage) &&
-      !(l.learningLanguage === "en" && from === "en") &&
-      points > 0
-    ) {
+    if (!seen.has(l.learningLanguage) && l.points > 0) {
       seen.add(l.learningLanguage);
       detected.push({
         code: l.learningLanguage,
-        points,
+        points: l.points,
         isSpecial: false,
       });
     }
@@ -315,34 +258,14 @@ function detectCourses(langs: Language[], showSpecial: boolean) {
   if (showSpecial) {
     for (const code of ["zs", "ms", "zc"]) {
       if (!seen.has(code)) {
-        detected.push({
-          code,
-          points: -1,
-          isSpecial: true,
-        });
+        detected.push({ code, points: -1, isSpecial: true });
       }
     }
   }
 
-  const calculatedTotalXp = [...xpMap.values()].reduce(
-    (a, b) => a + b,
-    0
-  );
-
-  detected.sort((a, b) => {
-    if (a.isSpecial !== b.isSpecial) {
-      return a.isSpecial ? -1 : 1;
-    }
-    if (a.isSpecial && b.isSpecial) {
-      return ["zs", "ms", "zc"].indexOf(a.code) -
-             ["zs", "ms", "zc"].indexOf(b.code);
-    }
-    return b.points - a.points;
-  });
-
   return {
     detectedCodes: detected.map((d) => d.code).slice(0, 50),
-    calculatedTotalXp,
+    calculatedTotalXp: [...xpMap.values()].reduce((a, b) => a + b, 0),
   };
 }
 
@@ -351,17 +274,11 @@ async function fetchFlags(codes: string[]): Promise<string[]> {
 
   for (const code of codes) {
     try {
-      const res = await fetchWithTimeout(
-        `${FLAG_BASE}${code}.svg`,
-        4000
-      );
+      const res = await fetchWithTimeout(`${FLAG_BASE}${code}.svg`, 4000);
       if (!res.ok) continue;
-
       const b64 = await responseToBase64(res);
       result.push(`data:image/svg+xml;base64,${b64}`);
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 
   return result;
@@ -381,117 +298,33 @@ function generateSvg(opts: {
   isSuper: boolean;
   calculatedTotalXp: number;
 }): string {
-  const {
-    user,
-    avatar,
-    flags,
-    iconPos,
-    isDark,
-    isDuolingo,
-    isSuper,
-    calculatedTotalXp,
-  } = opts;
+  const { user, avatar, flags, iconPos, isDark, isDuolingo, isSuper } = opts;
 
-  const customWhite = "#F5FBFF";
-
-  const colors = isDuolingo
-    ? {
-        bg: "#58cc02",
-        name: customWhite,
-        handle: "rgba(245,251,255,0.7)",
-        line: "rgba(255,255,255,0.25)",
-      }
+  const bg = isDuolingo
+    ? "#58cc02"
     : isSuper
-    ? {
-        bg: "url(#g)",
-        name: customWhite,
-        handle: "rgba(245,251,255,0.7)",
-        line: "rgba(255,255,255,0.25)",
-      }
-    : {
-        bg: isDark ? "#1a1a1a" : customWhite,
-        name: isDark ? customWhite : "#000",
-        handle: isDark ? "#aaa" : "#666",
-        line: isDark ? "#333" : "#e5e5e5",
-      };
+    ? "url(#g)"
+    : isDark
+    ? "#1a1a1a"
+    : "#F5FBFF";
 
   const rows = Math.ceil(flags.length / 10);
-  const height = 130 + rows * 30 + 10;
-
-  const isRight = iconPos === "right";
-  const ax = isRight ? 275 : 25;
-  const tx = isRight ? 25 : 90;
-  const sx = isRight ? 25 : 90;
-  const px = isRight ? 180 : 245;
-
-  const font =
-    "'Noto Sans JP','Hiragino Kaku Gothic ProN','Meiryo',sans-serif";
-
-  const badge = user.hasPlus
-    ? `<g transform="translate(${px},15)">
-         <circle cx="8" cy="8" r="8" fill="#3C4DFF" fill-opacity="0.3"/>
-       </g>`
-    : "";
-
-  const flagsSvg = flags
-    .map(
-      (src, i) =>
-        `<image x="${25 + (i % 10) * 30}"
-                y="${132 + Math.floor(i / 10) * 30}"
-                width="22"
-                height="22"
-                href="${src}"/>`
-    )
-    .join("");
+  const height = 130 + rows * 30;
 
   return `
-<svg xmlns="http://www.w3.org/2000/svg" width="350" height="${height}" viewBox="0 0 350 ${height}">
-  <defs>
-    ${
-      isSuper
-        ? `<linearGradient id="g" x1="0" y1="0" x2="350" y2="${height}">
-             <stop stop-color="#26FF55"/>
-             <stop offset="0.52" stop-color="#268AFF"/>
-             <stop offset="1" stop-color="#FC55FF"/>
-           </linearGradient>`
-        : ""
-    }
-    <clipPath id="cp">
-      <circle cx="${ax + 25}" cy="45" r="25"/>
-    </clipPath>
-  </defs>
-
-  <rect width="100%" height="100%" rx="15" fill="${colors.bg}"/>
-
-  <text x="${tx}" y="42" font-family="${font}" font-size="20" font-weight="700" fill="${colors.name}">
-    ${escapeXml(user.name)}
-  </text>
-
-  <text x="${tx}" y="62" font-family="${font}" font-size="14" fill="${colors.handle}">
-    @${escapeXml(user.username)}
-  </text>
-
-  <g>
-    <circle cx="${ax + 25}" cy="45" r="26" fill="${colors.line}"/>
-    <image x="${ax}" y="20" width="50" height="50" href="${avatar}" clip-path="url(#cp)"/>
-  </g>
-
-  ${badge}
-
-  <g transform="translate(${sx},80)">
-    <text x="0" y="16" font-family="${font}" font-size="15" fill="#ff9600">
-      ${user.streak.toLocaleString()} streak
-    </text>
-    <g transform="translate(120,0)">
-      <text x="0" y="16" font-family="${font}" font-size="15" fill="#ffd900">
-        ${(user.total_xp || calculatedTotalXp).toLocaleString()} XP
-      </text>
-    </g>
-  </g>
-
-  <line x1="25" y1="115" x2="325" y2="115" stroke="${colors.line}" stroke-width="1"/>
-
-  ${flagsSvg}
+<svg xmlns="http://www.w3.org/2000/svg" width="350" height="${height}">
+  <rect width="100%" height="100%" rx="15" fill="${bg}"/>
+  <image x="25" y="20" width="50" height="50" href="${avatar}"/>
+  <text x="90" y="42" font-size="20">${escapeXml(user.name)}</text>
+  <text x="90" y="62" font-size="14">@${escapeXml(user.username)}</text>
+  ${flags
+    .map(
+      (f, i) =>
+        `<image x="${25 + (i % 10) * 30}" y="${
+          100 + Math.floor(i / 10) * 30
+        }" width="22" height="22" href="${f}"/>`
+    )
+    .join("")}
 </svg>`;
 }
 
@@ -501,28 +334,16 @@ function generateSvg(opts: {
 
 function escapeXml(s: string): string {
   return s.replace(/[&<>"']/g, (c) =>
-    ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&apos;",
-    } as Record<string, string>)[c]
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" } as any)[c]
   );
 }
 
 function errorSvg(c: Context, message: string, status = 500) {
   return c.body(
     `<svg xmlns="http://www.w3.org/2000/svg" width="350" height="120">
-       <rect width="100%" height="100%" fill="#fff" rx="12"/>
-       <text x="20" y="50" font-size="14">
-         ${escapeXml(message)}
-       </text>
+       <text x="20" y="60">${escapeXml(message)}</text>
      </svg>`,
     status,
-    {
-      "Content-Type": "image/svg+xml; charset=utf-8",
-      "Cache-Control": "no-store",
-    }
+    { "Content-Type": "image/svg+xml; charset=utf-8" }
   );
 }
