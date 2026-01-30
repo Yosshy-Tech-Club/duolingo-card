@@ -146,7 +146,7 @@ export default { fetch: app.fetch };
  * Configuration
  * ======================================================= */
 
-const DUOME_BASE = "https://www.duome.eu/api/username/";
+const DUOME_BASE = "https://www.duolingo.com/2017-06-30/users?username=";
 const FLAG_BASE =
   "https://cdn.jsdelivr.net/gh/Wojix/duolingo-card@main/flag/";
 
