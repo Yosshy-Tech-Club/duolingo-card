@@ -69,13 +69,11 @@ app.get("/:username", async (c) => {
   const usernameParam = c.req.param("username");
   const themeParam = c.req.query("theme");
   const theme = ["dark", "duolingo", "super"].includes(themeParam ?? "") ? themeParam : null;
-  const iconPos = c.req.query("icon") === "right" ? "right" : "left";
 
   const cache = caches.default; // Cloudflare Workers default cache
   const url = new URL(c.req.url);
   url.search = "";
   if (theme) url.searchParams.set("theme", theme);
-  url.searchParams.set("icon", iconPos);
   const cacheKey = new Request(url.toString(), { method: "GET" });
   const cachedResponse = await cache.match(cacheKey);
   if (cachedResponse) {
@@ -184,11 +182,10 @@ app.get("/:username", async (c) => {
       };
     }
 
-    const isRight = iconPos === "right";
-    const avatarX = isRight ? 275 : 25;
-    const textBaseX = isRight ? 25 : 90;
-    const streakBaseX = isRight ? 25 : 90;
-    const superX = isRight ? 180 : 245;
+    const avatarX = 25;
+    const textBaseX = 90;
+    const streakBaseX = 90;
+    const superX = 245;
     const fontStack = "'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif";
     const superBadge = hasPlus
       ? `
