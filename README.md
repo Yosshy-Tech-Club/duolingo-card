@@ -5,4 +5,4 @@
 
 ## demo
 
-[![Duolingo Stats](https://duolingo-card.wojix.workers.dev/Wojicle?theme=super&a=2)](https://www.duolingo.com/profile/Wojicle)
+[![Duolingo Stats](https://duolingo-card.wojix.workers.dev/Wojicle?theme=super&a=3)](https://www.duolingo.com/profile/Wojicle)
