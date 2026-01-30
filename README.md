@@ -1,2 +1,3 @@
-# duolingo-card
-duolingo card
+<div align="center">
+  <h1>Duolingo Card</h1>
+</div>
