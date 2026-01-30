@@ -128,7 +128,7 @@ app.get("/:username", async (c) => {
     detectedCodes.sort((a, b) => { return b.points - a.points; });
 
     const finalCodes = detectedCodes.map((c) => c.code).slice(0, 50);
-    const flagBaseUrl = "https://cdn.jsdelivr.net/gh/Wojix/duolingo-card@main/flag/";
+    const flagBaseUrl = "https://cdn.jsdelivr.net/gh/Yosshy-Tech-Club/duolingo-card@main/flag/";
 
     const flagImages = await Promise.all(
       finalCodes.map(async (code) => {
