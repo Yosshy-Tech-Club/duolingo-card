@@ -1,8 +1,11 @@
 import { Hono } from 'hono'
+import type { Context } from 'hono'
 
 /* =====================
  * Types
  * ===================== */
+
+type Theme = 'light' | 'dark'
 
 type DuolingoApiResponse = {
   users?: DuolingoUser[]
@@ -13,7 +16,6 @@ type DuolingoUser = {
   name?: string
   picture: string
   streak?: number
-  hasPlus?: boolean
   languages?: DuolingoCourse[]
   courses?: DuolingoCourse[]
 }
@@ -24,8 +26,6 @@ type DuolingoCourse = {
   points?: number
   xp?: number
 }
-
-type Theme = 'light' | 'dark' | 'duolingo' | 'super'
 
 /* =====================
  * App
@@ -38,12 +38,10 @@ app.get('/:username/*', async (c) => {
   if (!username) return c.body(null, 204)
 
   const showSpecial = c.req.path.endsWith('/s')
-  const theme = resolveTheme(c.req.query('theme'))
-  const iconPos = c.req.query('icon') === 'right' ? 'right' : 'left'
+  const theme: Theme = c.req.query('theme') === 'dark' ? 'dark' : 'light'
 
   try {
     const user = await fetchUser(username)
-
     const avatar = await loadAvatar(user.picture)
     const { flags, totalXp } = resolveCourses(user, showSpecial)
 
@@ -53,12 +51,11 @@ app.get('/:username/*', async (c) => {
       flags,
       totalXp,
       theme,
-      iconPos,
     })
 
     return svgResponse(svg)
-  } catch {
-    return c.text('Error', 500)
+  } catch (err) {
+    return errorSvg(c, err instanceof Error ? err.message : 'Error')
   }
 })
 
@@ -70,6 +67,7 @@ export default { fetch: app.fetch }
 
 async function fetchUser(username: string): Promise<DuolingoUser> {
   const res = await fetch(`https://www.duolingo.com/2017-06-30/users?username=${username}`)
+  if (!res.ok) throw new Error('User not found')
   const json = (await res.json()) as DuolingoApiResponse
   const user = json.users?.[0]
   if (!user) throw new Error('User not found')
@@ -81,38 +79,37 @@ async function fetchUser(username: string): Promise<DuolingoUser> {
  * ===================== */
 
 function resolveCourses(user: DuolingoUser, showSpecial: boolean) {
-  const all = [...(user.languages ?? []), ...(user.courses ?? [])]
+  const courses = [...(user.languages ?? []), ...(user.courses ?? [])]
 
-  const xpByCourse = new Map<string, number>()
-  const flags: { code: string; points: number; special: boolean }[] = []
+  const flags: { code: string; xp: number; special: boolean }[] = []
   const seen = new Set<string>()
+  let totalXp = 0
 
-  for (const c of all) {
+  for (const c of courses) {
     const xp = c.points ?? c.xp ?? 0
-    if (!c.learningLanguage || !c.fromLanguage) continue
+    if (!c.learningLanguage) continue
 
-    const key = `${c.learningLanguage}_${c.fromLanguage}`
-    xpByCourse.set(key, Math.max(xpByCourse.get(key) ?? 0, xp))
+    totalXp += xp
 
-    if (xp > 0 && !seen.has(c.learningLanguage)) {
+    if (!seen.has(c.learningLanguage)) {
       seen.add(c.learningLanguage)
-      flags.push({ code: c.learningLanguage, points: xp, special: false })
+      flags.push({ code: c.learningLanguage, xp, special: false })
     }
   }
 
   if (showSpecial) {
     for (const code of ['zs', 'ms', 'zc']) {
-      if (!seen.has(code)) flags.push({ code, points: -1, special: true })
+      if (!seen.has(code)) flags.push({ code, xp: 0, special: true })
     }
   }
 
   flags.sort((a, b) =>
-    a.special !== b.special ? Number(b.special) - Number(a.special) : b.points - a.points
+    a.special !== b.special ? Number(b.special) - Number(a.special) : b.xp - a.xp
   )
 
   return {
-    totalXp: [...xpByCourse.values()].reduce((a, b) => a + b, 0),
-    flags: flags.slice(0, 50).map((f) => f.code),
+    totalXp,
+    flags: flags.map((f) => f.code).slice(0, 32),
   }
 }
 
@@ -122,67 +119,99 @@ function resolveCourses(user: DuolingoUser, showSpecial: boolean) {
 
 async function loadAvatar(picture: string): Promise<string> {
   const base = picture.startsWith('http') ? picture : `https:${picture}`
-
-  for (const size of ['xlarge', 'large']) {
-    const res = await fetch(`${base}/${size}`)
-    if (!res.ok) continue
-    return toBase64(await res.arrayBuffer(), 'image/jpeg')
-  }
-
-  return fallbackAvatar()
-}
-
-async function loadFlag(code: string): Promise<string | null> {
-  try {
-    const res = await fetch(`https://cdn.jsdelivr.net/gh/Wojix/duolingo-card@main/flag/${code}.svg`)
-    if (!res.ok) return null
-    return toBase64(await res.arrayBuffer(), 'image/svg+xml')
-  } catch {
-    return null
-  }
+  const res = await fetch(`${base}/xlarge`)
+  if (!res.ok) throw new Error('Avatar fetch failed')
+  return toBase64(await res.arrayBuffer(), 'image/jpeg')
 }
 
 /* =====================
  * SVG
  * ===================== */
 
-async function buildSvg(args: {
+function buildSvg(args: {
   user: DuolingoUser
   avatar: string
   flags: string[]
   totalXp: number
   theme: Theme
-  iconPos: 'left' | 'right'
 }) {
-  const flagImages = (await Promise.all(args.flags.map(loadFlag))).filter(Boolean)
+  const dark = args.theme === 'dark'
 
-  // SVG markup intentionally unchanged in layout / numbers
-  return `<!-- SVG omitted for brevity, identical to original -->`
+  const color = {
+    bg: dark ? '#0f172a' : '#ffffff',
+    panel: dark ? '#020617' : '#f8fafc',
+    fg: dark ? '#e5e7eb' : '#020617',
+    sub: dark ? '#94a3b8' : '#475569',
+    accent: '#58cc02',
+  }
+
+  const username = escapeXml(args.user.name || args.user.username)
+  const xp = formatNumber(args.totalXp)
+
+  const flags = args.flags
+    .map((c, i) => `<text x="${20 + i * 12}" y="130" font-size="10">${escapeXml(c)}</text>`)
+    .join('')
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="160">
+  <rect width="100%" height="100%" rx="12" fill="${color.panel}"/>
+
+  <image href="${args.avatar}" x="20" y="20" width="48" height="48" rx="24"/>
+
+  <text x="84" y="40" font-size="16" font-weight="700" fill="${color.fg}" font-family="system-ui">
+    ${username}
+  </text>
+
+  <text x="84" y="62" font-size="12" fill="${color.sub}" font-family="system-ui">
+    Total XP: ${xp}
+  </text>
+
+  ${flags}
+</svg>`
 }
 
 /* =====================
  * Utils
  * ===================== */
 
-function resolveTheme(theme: string | undefined): Theme {
-  if (theme === 'dark' || theme === 'duolingo' || theme === 'super') return theme
-  return 'light'
+function svgResponse(svg: string) {
+  return new Response(svg, {
+    headers: {
+      'Content-Type': 'image/svg+xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=0, s-maxage=86400',
+    },
+  })
 }
 
-function toBase64(buf: ArrayBuffer, mime: string): string {
+function escapeXml(str: string) {
+  return str.replace(/[<>&"']/g, (c) =>
+    ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]!)
+  )
+}
+
+function formatNumber(n: number) {
+  try {
+    return new Intl.NumberFormat('en-US').format(n)
+  } catch {
+    return String(n)
+  }
+}
+
+function toBase64(buf: ArrayBuffer, mime: string) {
   const bin = String.fromCharCode(...new Uint8Array(buf))
   return `data:${mime};base64,${btoa(bin)}`
 }
 
-function fallbackAvatar(): string {
-  return 'data:image/svg+xml;base64,' + btoa('<svg></svg>')
-}
-
-function svgResponse(svg: string) {
-  return new Response(svg, {
-    headers: {
-      'Content-Type': 'image/svg+xml',
-      'Access-Control-Allow-Origin': '*',
-    },
-  })
+function errorSvg(c: Context, message: string, status = 500) {
+  return c.body(
+    `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="80">
+  <rect width="100%" height="100%" rx="12" fill="#fee2e2"/>
+  <text x="20" y="46" font-size="14" fill="#991b1b" font-family="system-ui">
+    ${escapeXml(message)}
+  </text>
+</svg>`,
+    status,
+    { 'Content-Type': 'image/svg+xml; charset=utf-8' }
+  )
 }
