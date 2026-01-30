@@ -31,3 +31,5 @@
   ## Super user
     [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/duolingo?theme=super)](https://www.duolingo.com/profile/duolingo)
 (https://www.duolingo.com/profile/Duolingo)
+
+    [![Duolingo Stats](https://duolingo-card.wojix.workers.dev/profile?theme=super)](https://www.duolingo.com/profile/duolingo)
