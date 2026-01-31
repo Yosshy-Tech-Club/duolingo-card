@@ -66,7 +66,7 @@ async function fetchDuolingoUser(username: string): Promise<DuoUser> {
 app.get("/:username", async (c) => {
   const usernameParam = c.req.param("username");
   const themeParam = c.req.query("theme");
-  const theme = ["dark", "duolingo", "super"].includes(themeParam ?? "") ? themeParam : null;
+  const theme = ["dark", "super"].includes(themeParam ?? "") ? themeParam : null;
 
   const cache = caches.default; // Cloudflare Workers default cache
   const url = new URL(c.req.url);
@@ -167,7 +167,6 @@ app.get("/:username", async (c) => {
 
     const customWhite = "#F5FBFF";
     const isDark = theme === "dark";
-    const isDuolingo = theme === "duolingo";
     const isSuper = theme === "super";
     let colors = {
       bg: isDark ? "#1a1a1a" : customWhite,
@@ -175,14 +174,7 @@ app.get("/:username", async (c) => {
       handle: isDark ? "#aaa" : "#666",
       line: isDark ? "#333" : "#e5e5e5",
     };
-    if (isDuolingo) {
-      colors = {
-        bg: "#58cc02",
-        name: customWhite,
-        handle: "rgba(245, 251, 255, 0.7)",
-        line: "rgba(255, 255, 255, 0.25)",
-      };
-    } else if (isSuper) {
+    if (isSuper) {
       colors = {
         bg: "url(#paint0_linear_852_38759)",
         name: customWhite,
