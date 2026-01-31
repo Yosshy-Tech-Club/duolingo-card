@@ -31,14 +31,6 @@ Add `?theme=dark` to the URL to get a dark-themed SVG:
 https://duolingo-card.yosshy-123.workers.dev/[user_id]?theme=dark
 ```
 
-### Duolingo Theme
-
-Add `?theme=duolingo` to the URL to get a dark-themed SVG:
-
-```
-https://duolingo-card.yosshy-123.workers.dev/[user_id]?theme=duolingo
-```
-
 ### Super Theme
 
 Add `?theme=super` to the URL to get a dark-themed SVG:
@@ -65,14 +57,6 @@ Dark theme:
 
 ```markdown
 [![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle?theme=dark)](https://www.duolingo.com/profile/Wojicle)
-```
-
-Duolingo theme:
-
-[![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle?theme=duolingo)](https://www.duolingo.com/profile/Wojicle)
-
-```markdown
-[![Duolingo Card](https://duolingo-card.yosshy-123.workers.dev/Wojicle?theme=duolingo)](https://www.duolingo.com/profile/Wojicle)
 ```
 
 Super theme:
