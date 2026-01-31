@@ -187,7 +187,7 @@ app.get("/:username", async (c) => {
     const textBaseX = 90;
     const streakBaseX = 90;
     const superX = 245;
-    const duoLogoX = textBaseX + name.length * 11 + 10;
+    const duoLogoX = textBaseX + (handle.length * 8) + 20;
     const fontStack = "'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif";
     const superBadge = hasPlus
       ? `
@@ -212,8 +212,8 @@ app.get("/:username", async (c) => {
           </defs>
           <rect width="100%" height="100%" fill="${colors.bg}" rx="15"/>
           <text x="${textBaseX}" y="42" font-family="${fontStack}" font-size="20" fill="${colors.name}" font-weight="bold">${name}</text>
-          <image x="${duoLogoX}" y="22" width="24" height="24" href="${duoBase64}"/>
           <text x="${textBaseX}" y="62" font-family="${fontStack}" font-size="14" fill="${colors.handle}">@${handle}</text>
+          <image x="${duoLogoX}" y="46" width="20" height="20" href="${duoBase64}"/>
           <g filter="url(#sh)">
             <circle cx="${avatarX + 25}" cy="45" r="26" fill="${colors.line}"/>
             <image x="${avatarX}" y="20" width="50" height="50" href="${avatarBase64}" clip-path="url(#cp)"/>
