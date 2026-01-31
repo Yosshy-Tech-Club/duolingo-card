@@ -38,9 +38,7 @@ async function fetchDuo<T>(url: string): Promise<T> {
     if (err?.message) {
       message = err.message;
     }
-  } catch {
-    // Ignore non-JSON formats
-  }
+  } catch { /* Ignore */ }
   const error = new Error(message) as Error & {
     status?: number;
     type?: string;
@@ -100,7 +98,7 @@ app.get("/:username", async (c) => {
         const buffer = await imgRes.arrayBuffer();
         avatarBase64 = `data:image/jpeg;base64,${btoa(String.fromCharCode(...new Uint8Array(buffer)))}`;
       }
-    } catch {}
+    } catch { /**/ }
 
     if (!avatarBase64) avatarBase64 = fallbackBase64;
 
@@ -129,6 +127,17 @@ app.get("/:username", async (c) => {
 
     const finalCodes = detectedCodes.map((c) => c.code).slice(0, 50);
     const flagBaseUrl = "https://cdn.jsdelivr.net/gh/Yosshy-Tech-Club/duolingo-card@main/flag/";
+    let duoBase64 = "";
+    try {
+      const duoRes = await fetch(`${flagBaseUrl}duo.svg`);
+      if (duoRes.ok) {
+        const blob = await duoRes.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(blob)));
+        duoBase64 = `data:image/svg+xml;base64,${base64}`;
+      }
+    } catch {
+      /* Ignore */
+    }
 
     const flagImages = await Promise.all(
       finalCodes.map(async (code) => {
@@ -186,6 +195,7 @@ app.get("/:username", async (c) => {
     const textBaseX = 90;
     const streakBaseX = 90;
     const superX = 245;
+    const duoLogoX = textBaseX + name.length * 11 + 10;
     const fontStack = "'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif";
     const superBadge = hasPlus
       ? `
@@ -210,6 +220,7 @@ app.get("/:username", async (c) => {
           </defs>
           <rect width="100%" height="100%" fill="${colors.bg}" rx="15"/>
           <text x="${textBaseX}" y="42" font-family="${fontStack}" font-size="20" fill="${colors.name}" font-weight="bold">${name}</text>
+          <image x="${duoLogoX}" y="22" width="24" height="24" href="${duoBase64}"/>
           <text x="${textBaseX}" y="62" font-family="${fontStack}" font-size="14" fill="${colors.handle}">@${handle}</text>
           <g filter="url(#sh)">
             <circle cx="${avatarX + 25}" cy="45" r="26" fill="${colors.line}"/>
