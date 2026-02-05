@@ -33,7 +33,7 @@ https://duolingo-card.yosshy-123.workers.dev/[user_id]?theme=dark
 
 ### Super Theme
 
-Add `?theme=super` to the URL to get a dark-themed SVG:
+Add `?theme=super` to the URL to get a super-themed SVG:
 
 ```
 https://duolingo-card.yosshy-123.workers.dev/[user_id]?theme=super
