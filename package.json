@@ -1,5 +1,5 @@
 {
-  "name": "@duolingo-card",
+  "name": "duolingo-card",
   "private": true,
   "type": "module",
   "scripts": {
